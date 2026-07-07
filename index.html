@@ -16,8 +16,8 @@
     <meta name="mobile-web-app-capable" content="yes" />
 
     <!-- Ana ekran simgesi (iOS) -->
-    <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
-    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 
     <!-- Yazı tipleri (çevrimiçiyken yüklenir, çevrimdışında sistem yazı tipine düşer) -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -26,10 +26,10 @@
       href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;450;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <script type="module" crossorigin src="./assets/index-BwkfTYyE.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-DWan55UO.css">
-  <link rel="manifest" href="./manifest.webmanifest"></head>
+  </head>
   <body>
     <div id="root"></div>
+    <!-- Vite giriş noktası: gerçek kaynak. Derleme sırasında paket + PWA otomatik üretilir. -->
+    <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
