@@ -45,8 +45,28 @@ npm run build     # yayına hazır sürümü 'dist' klasörüne üretir
 npm run preview   # üretilen 'dist' sürümünü yerelde önizler
 ```
 
-Kodu her değiştirdikten sonra `npm run build` çalıştırıp yeni `dist` klasörünü tekrar
-yayınla (Netlify Drop'a yeniden sürükle) — uygulaman otomatik güncellenir.
+> Not: Bu depo artık **otomatik yayınlanıyor** — kodu her `main`'e gönderdiğinde GitHub
+> derleyip yayına alıyor. Elle `dist` üretip yüklemene gerek yok (aşağıya bak).
+
+---
+
+## 🚀 Otomatik yayınlama (GitHub Actions)
+
+`main` dalına her yükleme (push) sonrası GitHub uygulamayı kendisi derleyip **GitHub Pages**'e
+yayınlar. Böylece bilgisayarında Node.js kurmana bile gerek kalmaz: kaynağı değiştir → gönder,
+gerisi otomatik.
+
+- İş akışı dosyası: `.github/workflows/deploy.yml`
+- Canlı adres: `https://serhataldm.github.io/Harcama/`
+- Çalışmayı izlemek için repodaki **Actions** sekmesine bak ("Build & Deploy" iş akışı yeşile
+  dönünce yayın tamam).
+
+**Tek seferlik ayar (kurulumda bir kez yapılır):** Repo → **Settings → Pages → Build and
+deployment → Source → "GitHub Actions"** seçili olmalı. Bu seçili değilse yayınlama adımı hata verir.
+
+> iPhone'a eklenmiş uygulamada güncelleme hemen görünmezse: uygulamayı çevrimiçiyken tamamen
+> kapatıp (uygulama değiştiriciden yukarı at) tekrar aç; iOS yeni sürümü çoğu zaman ikinci
+> açılışta uygular.
 
 ---
 
@@ -93,6 +113,9 @@ harcama-defteri/
 - **Yedek al:** iOS, uzun süre açılmayan web uygulamalarının verisini bazen temizleyebilir.
   Önemli kayıtların için servis içindeki **Teslim özeti → Panoya kopyala** ile dökümü
   saklamak iyi bir alışkanlıktır. (İstenirse dışa/içe JSON yedekleme eklenebilir.)
-- **Kur elle girilir:** Her harcamada "1 [döviz] = kaç ₺" değerini sen belirlersin; aynı
-  serviste bir dövizi tekrar kullanınca son kuru otomatik gelir.
+- **Kur otomatik gelir, elle değiştirilebilir:** Harcama eklerken seçtiğin dövizin **güncel
+  kuru** internetten otomatik dolar (çevrimdışıyken son bilinen kur veya o serviste en son
+  kullandığın kur gelir). Dilediğin gibi değiştirebilirsin. **Kuru boş bırakırsan 1 kabul edilir**
+  (istersen doğrudan ₺ tutarını girebilmen için). Kur verisi `open.er-api.com`'dan çekilir ve
+  çevrimdışı için cihazda önbelleklenir.
 ```
