@@ -3,10 +3,24 @@ import { Check, Trash2, ArrowRight, Camera, Maximize2 } from "lucide-react";
 import { KATEGORILER } from "../data/categories.js";
 import { PB_MAP } from "../data/currencies.js";
 import { parseNum, fmt, tl, bugunISO, uid } from "../lib/format.js";
+import { guncelKur, kurZamani, kurlariTazele } from "../lib/kurlar.js";
 import { goruntuKucult, fotoKaydet, fotoSil, yeniFotoId } from "../lib/photos.js";
 import Modal from "./Modal.jsx";
 import ParaBirimiSecici from "./ParaBirimiSecici.jsx";
 import { useFotoURL, FotoBuyut } from "./Foto.jsx";
+
+// Kur sayısını düzenlenebilir metne çevir (virgüllü, gereksiz sıfırlar atılmış)
+function kurYaz(n) {
+  const ondalik = n >= 1 ? 4 : 6;
+  return String(Number(n.toFixed(ondalik))).replace(".", ",");
+}
+
+// Kur güncelleme zamanını kısa göster: "07.07 10:24"
+function kurTarihKisa(ts) {
+  const d = new Date(ts);
+  const p = (x) => String(x).padStart(2, "0");
+  return `${p(d.getDate())}.${p(d.getMonth() + 1)} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
 
 export default function HarcamaFormu({ servis, initial, onSave, onClose, onDelete }) {
   const [tarih, setTarih] = useState(initial?.tarih || bugunISO());
@@ -18,20 +32,46 @@ export default function HarcamaFormu({ servis, initial, onSave, onClose, onDelet
   const [fotoId, setFotoId] = useState(initial?.fotoId || null);
   const [fotoYukleniyor, setFotoYukleniyor] = useState(false);
   const [buyut, setBuyut] = useState(false);
+  const [kurTazelendi, setKurTazelendi] = useState(0); // canlı kur gelince arttır
   const tutarRef = useRef(null);
   const dosyaRef = useRef(null);
   const ilkFotoId = useRef(initial?.fotoId || null);
   const oturumEklenen = useRef([]); // bu formda IndexedDB'ye eklenen id'ler
+  const kurDokunuldu = useRef(!!initial); // kullanıcı kuru elle değiştirdi mi?
 
   const onizlemeUrl = useFotoURL(fotoId);
 
-  // Döviz değişince, o serviste en son kullanılan kuru otomatik doldur
+  // Önerilen kur: önce güncel (canlı/önbellekli) kur, yoksa serviste son kullanılan
+  const onerilenKur = (kod) => {
+    const canli = guncelKur(kod);
+    if (canli != null) return canli;
+    const son = servis?.sonKurlar?.[kod];
+    if (son != null) return Number(son);
+    return null;
+  };
+
+  // Form açılınca güncel kurları internetten tazelemeyi dene (çevrimdışıysa sessiz geçer)
+  useEffect(() => {
+    let iptal = false;
+    kurlariTazele().then(() => { if (!iptal) setKurTazelendi((x) => x + 1); });
+    return () => { iptal = true; };
+  }, []);
+
+  // Döviz değişince, o döviz için önerilen kuru otomatik doldur
   useEffect(() => {
     if (initial) return;
-    const son = servis?.sonKurlar?.[doviz];
-    if (son != null) setKur(String(son).replace(".", ","));
-    else setKur("");
+    kurDokunuldu.current = false;
+    const o = onerilenKur(doviz);
+    setKur(o != null ? kurYaz(o) : "");
   }, [doviz]); // eslint-disable-line
+
+  // Canlı kurlar geldiğinde, kullanıcı elle değiştirmediyse güncel kurla tazele
+  useEffect(() => {
+    if (initial) return;
+    if (kurDokunuldu.current) return;
+    const canli = guncelKur(doviz);
+    if (canli != null) setKur(kurYaz(canli));
+  }, [kurTazelendi]); // eslint-disable-line
 
   useEffect(() => {
     const t = setTimeout(() => tutarRef.current && tutarRef.current.focus(), 120);
@@ -40,8 +80,11 @@ export default function HarcamaFormu({ servis, initial, onSave, onClose, onDelet
 
   const tutarN = parseNum(tutar);
   const kurN = parseNum(kur);
-  const tlN = (Number.isFinite(tutarN) ? tutarN : 0) * (Number.isFinite(kurN) ? kurN : 0);
-  const gecerli = Number.isFinite(tutarN) && tutarN > 0 && Number.isFinite(kurN) && kurN > 0;
+  // Kur boş/geçersizse 1 kabul edilir (kullanıcı isterse ₺ tutarını doğrudan girebilsin)
+  const kurGirildi = Number.isFinite(kurN) && kurN > 0;
+  const kurEtkin = kurGirildi ? kurN : 1;
+  const tlN = (Number.isFinite(tutarN) ? tutarN : 0) * kurEtkin;
+  const gecerli = Number.isFinite(tutarN) && tutarN > 0; // kur artık zorunlu değil
   const pb = PB_MAP[doviz];
 
   const dosyaSecildi = async (e) => {
@@ -84,7 +127,7 @@ export default function HarcamaFormu({ servis, initial, onSave, onClose, onDelet
       aciklama: aciklama.trim(),
       tutar: tutarN,
       dovizKodu: doviz,
-      kur: kurN,
+      kur: kurEtkin,
       fotoId: fotoId || null,
     });
   };
@@ -140,11 +183,16 @@ export default function HarcamaFormu({ servis, initial, onSave, onClose, onDelet
             <input
               className="hd-input hd-num"
               inputMode="decimal"
-              placeholder="örn. 35,20"
+              placeholder="boş bırakırsan 1"
               value={kur}
-              onChange={(e) => setKur(e.target.value)}
+              onChange={(e) => { kurDokunuldu.current = true; setKur(e.target.value); }}
               style={{ fontSize: 17, fontWeight: 600 }}
             />
+            <div style={{ marginTop: 6, fontSize: 12, color: "var(--muted-2)", lineHeight: 1.45 }}>
+              {guncelKur(doviz) != null
+                ? `Güncel kur otomatik dolduruldu${kurZamani() ? ` · ${kurTarihKisa(kurZamani())}` : ""} — istersen değiştir.`
+                : "Boş bırakırsan kur 1 olarak alınır."}
+            </div>
           </div>
 
           {/* TL önizleme */}
